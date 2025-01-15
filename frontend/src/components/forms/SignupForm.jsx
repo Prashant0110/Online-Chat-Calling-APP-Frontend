@@ -1,181 +1,124 @@
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { registerUser } from "../../features/auth/authSlice";
-import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  Button,
-  CircularProgress,
-  TextField,
-} from "@mui/material";
-import { Formik, Form, Field, ErrorMessage } from "formik";
+import React from "react";
+import { Formik, Field, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { Button, TextField, Box, Typography } from "@mui/material";
+import { Link, useNavigate } from "react-router-dom";
 
-const SignUpForm = () => {
-  const dispatch = useDispatch();
-  const [formError, setFormError] = useState(null);
+// Validation Schema using Yup
+const validationSchema = Yup.object({
+  username: Yup.string().required("Username is required"),
+  email: Yup.string()
+    .email("Invalid email format")
+    .required("Email is required"),
+  password: Yup.string()
+    .min(6, "Password must be at least 6 characters")
+    .required("Password is required"),
+});
 
-  // Validation Schema
-  const validationSchema = Yup.object({
-    username: Yup.string()
-      .min(3, "Username must be at least 3 characters")
-      .required("Username is required"),
-    email: Yup.string()
-      .email("Invalid email format")
-      .required("Email is required"),
-    password: Yup.string()
-      .min(6, "Password must be at least 6 characters")
-      .required("Password is required"),
-    confirmPassword: Yup.string()
-      .oneOf([Yup.ref("password"), null], "Passwords must match")
-      .required("Confirm your password"),
-  });
-
-  const handleRegister = (values) => {
-    dispatch(registerUser(values))
-      .then(() => {
-        // Redirect or show success message
-      })
-      .catch((err) => {
-        setFormError(err.message);
-      });
-  };
+const SignupForm = () => {
+  const navigate = useNavigate();
 
   return (
     <Box
-      sx={{
-        width: "100%",
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-        p: 2,
-      }}
+      className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-500"
+      p={4}
     >
-      <Paper
-        elevation={4}
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          maxWidth: "900px",
-          width: "100%",
-          borderRadius: 4,
-          overflow: "hidden",
-        }}
+      <Box
+        className="max-w-sm w-full bg-white p-6 rounded-xl shadow-lg"
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
       >
-        {/* Left Side Image */}
-        <Grid
-          item
-          xs={12}
-          md={6}
-          sx={{
-            display: { xs: "none", md: "block" },
-            backgroundImage:
-              "url('/assets/kunal-pandit-5w9D2ZqZxLw-unsplash.jpg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        <Typography
+          variant="h5"
+          component="h1"
+          className="text-center mb-6 font-semibold text-gray-800"
+        >
+          Create Account
+        </Typography>
 
-        {/* Right Side Form */}
-        <Grid
-          item
-          xs={12}
-          md={6}
-          sx={{
-            p: 4,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
+        <Formik
+          initialValues={{
+            username: "",
+            email: "",
+            password: "",
+          }}
+          validationSchema={validationSchema}
+          onSubmit={(values) => {
+            console.log("Form submitted with values: ", values);
+            // Redirect to login page after successful signup
+            navigate("/login");
           }}
         >
-          <Typography
-            variant="h5"
-            gutterBottom
-            sx={{ fontWeight: "bold", mb: 3 }}
-          >
-            Create Your Account
-          </Typography>
-          <Formik
-            initialValues={{
-              username: "",
-              email: "",
-              password: "",
-              confirmPassword: "",
-            }}
-            validationSchema={validationSchema}
-            onSubmit={handleRegister}
-          >
-            {({ isSubmitting }) => (
-              <Form style={{ width: "100%", maxWidth: 400 }}>
-                <Field
-                  name="username"
-                  as={TextField}
-                  label="Username"
-                  fullWidth
-                  margin="normal"
-                  helperText={<ErrorMessage name="username" />}
-                  error={Boolean(<ErrorMessage name="username" />)}
-                />
-                <Field
-                  name="email"
-                  as={TextField}
-                  label="Email"
-                  fullWidth
-                  margin="normal"
-                  helperText={<ErrorMessage name="email" />}
-                  error={Boolean(<ErrorMessage name="email" />)}
-                />
-                <Field
-                  name="password"
-                  as={TextField}
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  margin="normal"
-                  helperText={<ErrorMessage name="password" />}
-                  error={Boolean(<ErrorMessage name="password" />)}
-                />
-                <Field
-                  name="confirmPassword"
-                  as={TextField}
-                  label="Confirm Password"
-                  type="password"
-                  fullWidth
-                  margin="normal"
-                  helperText={<ErrorMessage name="confirmPassword" />}
-                  error={Boolean(<ErrorMessage name="confirmPassword" />)}
-                />
-                {formError && (
-                  <Typography
-                    variant="body2"
-                    color="error"
-                    sx={{ textAlign: "center", mt: 1 }}
-                  >
-                    {formError}
-                  </Typography>
-                )}
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  disabled={isSubmitting}
-                  sx={{ mt: 3, py: 1.5, fontWeight: "bold" }}
-                >
-                  {isSubmitting ? <CircularProgress size={24} /> : "Sign Up"}
-                </Button>
-              </Form>
-            )}
-          </Formik>
-        </Grid>
-      </Paper>
+          <Form className="space-y-4">
+            <div>
+              <Field
+                name="username"
+                as={TextField}
+                label="Username"
+                variant="outlined"
+                fullWidth
+                size="small"
+                className="block"
+                error={false}
+                helperText={<ErrorMessage name="username" />}
+              />
+            </div>
+
+            <div>
+              <Field
+                name="email"
+                as={TextField}
+                label="Email"
+                variant="outlined"
+                fullWidth
+                size="small"
+                className="block"
+                error={false}
+                helperText={<ErrorMessage name="email" />}
+              />
+            </div>
+
+            <div>
+              <Field
+                name="password"
+                as={TextField}
+                type="password"
+                label="Password"
+                variant="outlined"
+                fullWidth
+                size="small"
+                className="block"
+                error={false}
+                helperText={<ErrorMessage name="password" />}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              size="large"
+              className="mt-6"
+            >
+              Create Account
+            </Button>
+
+            <Typography className="text-center mt-4 text-gray-600">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="text-indigo-600 font-semibold hover:text-indigo-800"
+              >
+                Sign In
+              </Link>
+            </Typography>
+          </Form>
+        </Formik>
+      </Box>
     </Box>
   );
 };
 
-export default SignUpForm;
+export default SignupForm;

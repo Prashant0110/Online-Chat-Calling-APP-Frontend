@@ -12,9 +12,11 @@ import {
 } from "@mui/material";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const LoginForm = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // Hook to navigate
   const [formError, setFormError] = useState(null);
 
   // Validation Schema using Yup
@@ -29,7 +31,8 @@ const LoginForm = () => {
   const handleLogin = (values) => {
     dispatch(loginUser(values))
       .then(() => {
-        // Redirect or show success message
+        // Redirect to Dashboard after successful login
+        navigate("/dashboard");
       })
       .catch((err) => {
         setFormError(err.message); // Set error message

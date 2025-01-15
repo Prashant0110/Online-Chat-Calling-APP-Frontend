@@ -13,6 +13,8 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<SignupPage />} />
+        <Route path="*" element={<div>404 Not Found</div>} />
+        <Route path="/dashboard" element={<div>Dashboard</div>} />
       </Routes>
     </Router>
   );
