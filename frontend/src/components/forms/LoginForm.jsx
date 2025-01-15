@@ -1,7 +1,15 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { loginUser } from "../../features/auth/authSlice";
-import { TextField, Button, CircularProgress } from "@mui/material";
+import {
+  TextField,
+  Button,
+  CircularProgress,
+  Typography,
+  Container,
+  Box,
+  Alert,
+} from "@mui/material";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 
@@ -29,50 +37,75 @@ const LoginForm = () => {
   };
 
   return (
-    <Formik
-      initialValues={{ email: "", password: "" }}
-      validationSchema={validationSchema}
-      onSubmit={handleLogin}
+    <Container
+      maxWidth="xs"
+      sx={{
+        mt: 4,
+        p: 3,
+        boxShadow: 3,
+        borderRadius: 2,
+        bgcolor: "background.paper",
+      }}
     >
-      {({ isSubmitting }) => (
-        <Form>
-          <div>
-            <Field
-              name="email"
-              type="email"
-              as={TextField}
-              label="Email"
-              fullWidth
-              margin="normal"
-            />
-            <ErrorMessage name="email" component="div" className="error" />
-          </div>
-          <div>
-            <Field
-              name="password"
-              type="password"
-              as={TextField}
-              label="Password"
-              fullWidth
-              margin="normal"
-            />
-            <ErrorMessage name="password" component="div" className="error" />
-          </div>
-          {formError && <div className="error-message">{formError}</div>}
-          <div>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? <CircularProgress size={24} /> : "Login"}
-            </Button>
-          </div>
-        </Form>
+      <Typography variant="h5" align="center" gutterBottom>
+        Login
+      </Typography>
+
+      {formError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {formError}
+        </Alert>
       )}
-    </Formik>
+
+      <Formik
+        initialValues={{ email: "", password: "" }}
+        validationSchema={validationSchema}
+        onSubmit={handleLogin}
+      >
+        {({ isSubmitting }) => (
+          <Form>
+            <Box sx={{ mb: 2 }}>
+              <Field
+                name="email"
+                type="email"
+                as={TextField}
+                label="Email"
+                fullWidth
+                variant="outlined"
+                margin="dense"
+                error={Boolean(ErrorMessage.name === "email")}
+                helperText={<ErrorMessage name="email" />}
+              />
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <Field
+                name="password"
+                type="password"
+                as={TextField}
+                label="Password"
+                fullWidth
+                variant="outlined"
+                margin="dense"
+                error={Boolean(ErrorMessage.name === "password")}
+                helperText={<ErrorMessage name="password" />}
+              />
+            </Box>
+            <Box sx={{ textAlign: "center", mt: 3 }}>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                size="large"
+                fullWidth
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <CircularProgress size={24} /> : "Login"}
+              </Button>
+            </Box>
+          </Form>
+        )}
+      </Formik>
+    </Container>
   );
 };
 
