@@ -1,124 +1,126 @@
 import React from "react";
-import { Formik, Field, Form, ErrorMessage } from "formik";
+import { useFormik } from "formik";
 import * as Yup from "yup";
-import { Button, TextField, Box, Typography } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-// Validation Schema using Yup
-const validationSchema = Yup.object({
-  username: Yup.string().required("Username is required"),
-  email: Yup.string()
-    .email("Invalid email format")
-    .required("Email is required"),
-  password: Yup.string()
-    .min(6, "Password must be at least 6 characters")
-    .required("Password is required"),
-});
-
-const SignupForm = () => {
+const SignUpForm = () => {
   const navigate = useNavigate();
 
+  const formik = useFormik({
+    initialValues: {
+      username: "", // Ensure initial value is an empty string
+      email: "",
+      password: "",
+    },
+    validationSchema: Yup.object({
+      username: Yup.string().required("Username is required"),
+      email: Yup.string()
+        .email("Invalid email address")
+        .required("Email is required"),
+      password: Yup.string()
+        .min(6, "Password must be at least 6 characters")
+        .required("Password is required"),
+    }),
+    onSubmit: async (values) => {
+      console.log("Sign-up data submitted:", values);
+
+      try {
+        // Send the signup data to the backend
+        const response = await axios.post(
+          "http://localhost:3000/api/users/register",
+          {
+            username: values.username,
+            email: values.email,
+            password: values.password,
+          }
+        );
+
+        if (response.data.token) {
+          localStorage.setItem("token", response.data.token);
+          console.log("Registration successful and token stored!");
+
+          // Navigate to login page
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error(
+          "Error during registration:",
+          error.response ? error.response.data : error.message
+        );
+      }
+    },
+  });
+
   return (
-    <Box
-      className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-500"
-      p={4}
-    >
-      <Box
-        className="max-w-sm w-full bg-white p-6 rounded-xl shadow-lg"
-        display="flex"
-        flexDirection="column"
-        justifyContent="center"
+    <div className="h-screen flex justify-center items-center bg-gray-100">
+      <form
+        onSubmit={formik.handleSubmit}
+        className="bg-white rounded-md shadow-2xl p-8 w-full max-w-md"
       >
-        <Typography
-          variant="h5"
-          component="h1"
-          className="text-center mb-6 font-semibold text-gray-800"
-        >
+        <h1 className="text-gray-800 font-bold text-2xl mb-1">
           Create Account
-        </Typography>
+        </h1>
+        <p className="text-sm text-gray-600 mb-8">
+          Join us and start your journey!
+        </p>
 
-        <Formik
-          initialValues={{
-            username: "",
-            email: "",
-            password: "",
-          }}
-          validationSchema={validationSchema}
-          onSubmit={(values) => {
-            console.log("Form submitted with values: ", values);
-            // Redirect to login page after successful signup
-            navigate("/login");
-          }}
-        >
-          <Form className="space-y-4">
-            <div>
-              <Field
-                name="username"
-                as={TextField}
-                label="Username"
-                variant="outlined"
-                fullWidth
-                size="small"
-                className="block"
-                error={false}
-                helperText={<ErrorMessage name="username" />}
-              />
-            </div>
+        <div className="flex flex-col space-y-4">
+          <div>
+            <input
+              type="text"
+              name="username"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Username"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.username} // Ensure it's controlled
+            />
+            {formik.touched.username && formik.errors.username ? (
+              <p className="text-red-500 text-sm">{formik.errors.username}</p>
+            ) : null}
+          </div>
 
-            <div>
-              <Field
-                name="email"
-                as={TextField}
-                label="Email"
-                variant="outlined"
-                fullWidth
-                size="small"
-                className="block"
-                error={false}
-                helperText={<ErrorMessage name="email" />}
-              />
-            </div>
+          <div>
+            <input
+              type="email"
+              name="email"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Email Address"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.email} // Ensure it's controlled
+            />
+            {formik.touched.email && formik.errors.email ? (
+              <p className="text-red-500 text-sm">{formik.errors.email}</p>
+            ) : null}
+          </div>
 
-            <div>
-              <Field
-                name="password"
-                as={TextField}
-                type="password"
-                label="Password"
-                variant="outlined"
-                fullWidth
-                size="small"
-                className="block"
-                error={false}
-                helperText={<ErrorMessage name="password" />}
-              />
-            </div>
+          <div>
+            <input
+              type="password"
+              name="password"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Password"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.password} // Ensure it's controlled
+            />
+            {formik.touched.password && formik.errors.password ? (
+              <p className="text-red-500 text-sm">{formik.errors.password}</p>
+            ) : null}
+          </div>
 
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              size="large"
-              className="mt-6"
-            >
-              Create Account
-            </Button>
-
-            <Typography className="text-center mt-4 text-gray-600">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-indigo-600 font-semibold hover:text-indigo-800"
-              >
-                Sign In
-              </Link>
-            </Typography>
-          </Form>
-        </Formik>
-      </Box>
-    </Box>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700"
+          >
+            Sign Up
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 
-export default SignupForm;
+export default SignUpForm;

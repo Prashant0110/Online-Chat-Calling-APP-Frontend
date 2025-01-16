@@ -1,9 +1,13 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
+// https://vitejs.dev/config/
 export default defineConfig({
-  base: "./",
-  publicDir: "public",
-  build: {
-    outDir: "dist",
+  plugins: [react()],
+  css: {
+    postcss: "./postcss.config.js", // Make sure this points to your PostCSS config
+  },
+  server: {
+    port: 5173, // Ensure the port is explicitly set
   },
 });
