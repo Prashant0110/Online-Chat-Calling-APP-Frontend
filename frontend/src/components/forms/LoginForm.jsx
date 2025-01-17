@@ -51,6 +51,11 @@ const LoginForm = () => {
         // Log the response data
         console.log("Login successful. Response data:", response.data);
 
+        //save token to local storage
+
+        localStorage.setItem("token", response.data.token);
+        console.log("Token stored in localStorage:", response.data.token);
+
         alert("Login successful!");
         navigate("/dashboard");
       } catch (error) {

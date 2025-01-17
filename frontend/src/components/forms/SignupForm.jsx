@@ -9,7 +9,7 @@ const SignUpForm = () => {
 
   const formik = useFormik({
     initialValues: {
-      username: "", // Ensure initial value is an empty string
+      username: "",
       email: "",
       password: "",
     },

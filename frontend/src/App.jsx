@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import Navbar from "./components/shared/Navbar";
 import HomePage from "./pages/HomePage";
+import Dashboard from "./pages/Dashboard";
 
 const App = () => {
   return (
@@ -14,7 +15,7 @@ const App = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<SignupPage />} />
         <Route path="*" element={<div>404 Not Found</div>} />
-        <Route path="/dashboard" element={<div>Dashboard</div>} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
   );
