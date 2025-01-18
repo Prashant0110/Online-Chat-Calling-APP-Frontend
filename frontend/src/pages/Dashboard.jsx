@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import GroupsList from "./GroupList";
+import ChatBox from "./ChatBox";
+import MessageInput from "./MessaageInput";
 
 const Dashboard = () => {
   const [groups, setGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState(null); // Track the selected group
-  const [messages, setMessages] = useState([]); // Messages in the current chat
-  const [newMessage, setNewMessage] = useState(""); // New message input
-  const token = localStorage.getItem("token"); // User's token for authorization
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    // Fetch groups on component load
     const fetchGroups = async () => {
       try {
         const response = await axios.get(
@@ -28,14 +30,11 @@ const Dashboard = () => {
   }, [token]);
 
   const handleJoinGroup = async (groupId) => {
-    // Join the group
     try {
       await axios.post(
         `http://localhost:3000/api/groups/join/${groupId}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const group = groups.find((g) => g._id === groupId);
       setSelectedGroup(group);
@@ -46,14 +45,11 @@ const Dashboard = () => {
   };
 
   const handleLeaveGroup = async (groupId) => {
-    // Leave the group
     try {
       await axios.post(
         `http://localhost:3000/api/groups/leave/${groupId}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setSelectedGroup(null);
       alert("You have left the group.");
@@ -63,10 +59,9 @@ const Dashboard = () => {
   };
 
   const fetchMessages = async (groupId) => {
-    // Fetch messages for the selected group
     try {
       const response = await axios.get(
-        `http://localhost:3000/api/groups/messages/${groupId}`,
+        `http://localhost:3000/api/chats/getchat/${groupId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -78,12 +73,11 @@ const Dashboard = () => {
   };
 
   const handleSendMessage = async () => {
-    // Send a new message
     if (!newMessage.trim()) return;
     try {
       const response = await axios.post(
-        `http://localhost:3000/api/groups/messages/${selectedGroup._id}`,
-        { text: newMessage },
+        `http://localhost:3000/api/chats/sendchat`,
+        { text: newMessage, groupId: selectedGroup._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessages([...messages, response.data]);
@@ -94,174 +88,34 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    // Fetch messages when a group is selected
     if (selectedGroup) fetchMessages(selectedGroup._id);
   }, [selectedGroup]);
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar for Groups */}
-      <div
-        style={{
-          width: "30%",
-          backgroundColor: "#f5f5f5",
-          borderRight: "1px solid #ddd",
-          padding: "1rem",
-        }}
-      >
-        <h3>Groups</h3>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {groups.map((group) => (
-            <li
-              key={group._id}
-              style={{
-                padding: "10px",
-                borderBottom: "1px solid #ddd",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span>{group.name}</span>
-              {!selectedGroup || selectedGroup._id !== group._id ? (
-                <button
-                  onClick={() => handleJoinGroup(group._id)}
-                  style={{
-                    padding: "5px 10px",
-                    backgroundColor: "#007bff",
-                    color: "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  Join
-                </button>
-              ) : (
-                <span style={{ color: "green" }}>Joined</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Chat UI */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          padding: "1rem",
-        }}
-      >
-        {selectedGroup ? (
-          <>
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-              }}
-            >
-              <h2>{selectedGroup.name}</h2>
-              <button
-                onClick={() => handleLeaveGroup(selectedGroup._id)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#ff4d4d",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                Leave Room
-              </button>
-            </div>
-
-            {/* Chat Messages */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                border: "1px solid #ddd",
-                borderRadius: "5px",
-                padding: "1rem",
-                marginBottom: "1rem",
-                backgroundColor: "#f9f9f9",
-              }}
-            >
-              {messages.length > 0 ? (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: "flex",
-                      flexDirection:
-                        msg.senderId === "currentUserId"
-                          ? "row-reverse"
-                          : "row",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "10px",
-                        backgroundColor:
-                          msg.senderId === "currentUserId" ? "#4caf50" : "#ddd",
-                        color:
-                          msg.senderId === "currentUserId" ? "#fff" : "#000",
-                        borderRadius: "10px",
-                        maxWidth: "70%",
-                      }}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p style={{ textAlign: "center", color: "#999" }}>
-                  No messages yet. Start the conversation!
-                </p>
-              )}
-            </div>
-
-            {/* Message Input */}
-            <div style={{ display: "flex" }}>
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  border: "1px solid #ddd",
-                  borderRadius: "5px 0 0 5px",
-                }}
-              />
-              <button
-                onClick={handleSendMessage}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#007bff",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "0 5px 5px 0",
-                  cursor: "pointer",
-                }}
-              >
-                Send
-              </button>
-            </div>
-          </>
-        ) : (
-          <p style={{ textAlign: "center", marginTop: "2rem" }}>
-            Join a group to start chatting.
-          </p>
-        )}
-      </div>
+      <GroupsList
+        groups={groups}
+        selectedGroup={selectedGroup}
+        handleJoinGroup={handleJoinGroup}
+      />
+      {selectedGroup ? (
+        <div style={{ flex: 1 }}>
+          <ChatBox
+            messages={messages}
+            selectedGroup={selectedGroup}
+            handleLeaveGroup={handleLeaveGroup}
+          />
+          <MessageInput
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            handleSendMessage={handleSendMessage}
+          />
+        </div>
+      ) : (
+        <p style={{ textAlign: "center", marginTop: "2rem" }}>
+          Join a group to start chatting.
+        </p>
+      )}
     </div>
   );
 };
