@@ -1,22 +1,17 @@
-// Example of useSocket hook managing the socket connection
-const useSocket = (selectedGroupId) => {
-  const [socket, setSocket] = useState(null);
+import { useEffect } from "react";
+import { io } from "socket.io-client";
+
+const useSocket = (groupId) => {
+  const socket = io("http://localhost:3000", { withCredentials: true });
 
   useEffect(() => {
-    const socketConnection = io("http://localhost:3000");
-
-    socketConnection.on("connect", () => {
-      socketConnection.emit("joinGroup", selectedGroupId);
-    });
-
-    socketConnection.on("message", (message) => {
-      // Handle incoming message
-    });
+    // Join the group room via Socket.io
+    socket.emit("joinGroup", groupId);
 
     return () => {
-      socketConnection.disconnect();
+      socket.disconnect();
     };
-  }, [selectedGroupId]);
+  }, [groupId]);
 
   return socket;
 };

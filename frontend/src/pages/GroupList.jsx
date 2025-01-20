@@ -10,17 +10,13 @@ const GroupList = ({ onChatSelect }) => {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const token = localStorage.getItem("token"); // Authentication Token
+        const token = localStorage.getItem("token");
         const { data } = await axios.get(
           "http://localhost:3000/api/groups/getgroup",
           {
-            headers: {
-              Authorization: `Bearer ${token}`, // Send Auth Token to get groups
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
-
-        // Store groups in the state
         setGroups(data);
         setLoading(false);
       } catch (err) {
@@ -32,42 +28,47 @@ const GroupList = ({ onChatSelect }) => {
     fetchGroups();
   }, []);
 
-  const updateGroupMembership = (groupId, isJoining) => {
-    setGroups((prevGroups) =>
-      prevGroups.map((group) =>
-        group._id === groupId ? { ...group, isJoined: isJoining } : group
-      )
-    );
-  };
-
-  const handleGroupAction = async (groupId, action) => {
+  const handleJoinGroup = async (groupId) => {
     setProcessingGroupId(groupId);
     try {
-      const token = localStorage.getItem("token"); // Auth token
-
-      const endpoint =
-        action === "join"
-          ? `http://localhost:3000/api/groups//join/${groupId}` // Adjust endpoint format
-          : `http://localhost:3000/api/groups/leave/${groupId}`;
-
-      // Send Auth token in the header to perform action on the group
-      const response = await axios.post(
-        endpoint,
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:3000/api/groups/join/${groupId}`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // Send Auth Token
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.status === 200) {
-        updateGroupMembership(groupId, action === "join");
-        alert(`You have ${action === "join" ? "joined" : "left"} the group`);
-      }
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group._id === groupId ? { ...group, isJoined: true } : group
+        )
+      );
     } catch (err) {
-      console.error(err); // Log the actual error for debugging
-      alert(err.response?.data?.message || `Failed to ${action} the group`);
+      console.error(err);
+      alert(err.response?.data?.message || "Failed to join the group");
+    } finally {
+      setProcessingGroupId(null);
+    }
+  };
+
+  const handleLeaveGroup = async (groupId) => {
+    setProcessingGroupId(groupId);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:3000/api/groups/leave/${groupId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group._id === groupId ? { ...group, isJoined: false } : group
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Failed to leave the group");
     } finally {
       setProcessingGroupId(null);
     }
@@ -77,40 +78,38 @@ const GroupList = ({ onChatSelect }) => {
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-4">
       {groups.map((group) => (
         <li
-          key={group._id} // Use group._id for unique key
-          className="flex justify-between items-center p-3 bg-gray-100 rounded-md shadow-sm"
+          key={group._id}
+          className="flex justify-between items-center p-4 bg-gray-200 rounded-md shadow hover:bg-gray-300"
         >
           <div>
-            <h3 className="font-bold">{group.name}</h3>
-            <p className="text-gray-600 text-sm">{group.description}</p>
+            <h3 className="font-bold text-lg text-gray-800">{group.name}</h3>
+            <p className="text-sm text-gray-600">{group.description}</p>
           </div>
           <div className="flex space-x-2">
             {group.isJoined ? (
               <>
                 <button
-                  onClick={() => handleGroupAction(group._id, "leave")}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
-                  disabled={processingGroupId === group._id}
-                >
-                  {processingGroupId === group._id ? "Processing..." : "Leave"}
-                </button>
-                <button
-                  onClick={() => onChatSelect(group._id)}
+                  onClick={() => onChatSelect(group._id)} // Call to open chat
                   className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                 >
                   Chat
                 </button>
+                <button
+                  onClick={() => handleLeaveGroup(group._id)}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  Leave
+                </button>
               </>
             ) : (
               <button
-                onClick={() => handleGroupAction(group._id, "join")}
+                onClick={() => handleJoinGroup(group._id)}
                 className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-                disabled={processingGroupId === group._id}
               >
-                {processingGroupId === group._id ? "Processing..." : "Join"}
+                Join
               </button>
             )}
           </div>

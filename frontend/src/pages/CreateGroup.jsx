@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const CreateGroup = () => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,52 +18,46 @@ const CreateGroup = () => {
     }
 
     try {
+      const token = localStorage.getItem("token");
       const response = await axios.post(
         "http://localhost:3000/api/groups/creategroup",
-        {
-          name,
-          description,
-        }
+        { name, description },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setSuccess("Group created successfully");
       setError("");
-      setName("");
-      setDescription("");
+
+      // Redirect to the group chat page
+      navigate(`/group/${response.data._id}`);
     } catch (err) {
-      setError(err.response.data.message);
+      setError("Error creating group");
+      console.error("Error creating group:", err);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded shadow-lg">
-      <h2 className="text-2xl font-semibold text-center mb-4">
-        Create a New Group
-      </h2>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      {success && <p className="text-green-500 text-sm">{success}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700">Group Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded"
-            placeholder="Enter group name"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-2 border rounded"
-            placeholder="Enter group description"
-          />
-        </div>
+    <div className="max-w-lg mx-auto mt-8">
+      <h2 className="text-2xl font-semibold">Create a New Group</h2>
+      {success && <div className="text-green-500 mt-2">{success}</div>}
+      {error && <div className="text-red-500 mt-2">{error}</div>}
+      <form onSubmit={handleSubmit} className="mt-4">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-3 border rounded"
+          placeholder="Group Name"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-3 border rounded mt-4"
+          placeholder="Group Description"
+        ></textarea>
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded"
+          className="w-full bg-blue-500 text-white py-3 mt-4 rounded hover:bg-blue-600"
         >
           Create Group
         </button>
