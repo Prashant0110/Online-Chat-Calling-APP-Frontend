@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import useSocket from "../services/useSocket"; // Import the custom hook
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faVideo, faPhone } from "@fortawesome/free-solid-svg-icons";
 
 const ChatBox = ({ groupId }) => {
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
-  const [isCallActive, setIsCallActive] = useState(false);
 
   const socket = useSocket(groupId); // Use the custom hook
 
@@ -102,10 +103,13 @@ const ChatBox = ({ groupId }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log("Response from call endpoint:", response); // Log the response
+
       if (response.status === 200) {
+        // Redirect to Stripe Checkout
         const stripe = window.Stripe("your_stripe_public_key"); // Replace with your Stripe public key
         const { error } = await stripe.redirectToCheckout({
-          sessionId: response.data.sessionId,
+          sessionId: response.data.sessionId, // Assuming you return a sessionId from your backend
         });
 
         if (error) {
@@ -177,13 +181,21 @@ const ChatBox = ({ groupId }) => {
         </button>
       </form>
 
-      {/* Call Button */}
-      <button
-        onClick={handleStartCall}
-        className="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-      >
-        Start Call
-      </button>
+      {/* Call Buttons */}
+      <div className="flex space-x-4 mt-4">
+        <button
+          onClick={handleStartCall}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
+          <FontAwesomeIcon icon={faPhone} /> Call
+        </button>
+        <button
+          onClick={handleStartCall}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          <FontAwesomeIcon icon={faVideo} /> Video Call
+        </button>
+      </div>
     </div>
   );
 };

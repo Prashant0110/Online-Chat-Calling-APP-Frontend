@@ -92,7 +92,7 @@ const GroupList = ({ onChatSelect }) => {
             {group.isJoined ? (
               <>
                 <button
-                  onClick={() => onChatSelect(group._id)} // Call to open chat
+                  onClick={() => onChatSelect(group._id)}
                   className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                 >
                   Chat

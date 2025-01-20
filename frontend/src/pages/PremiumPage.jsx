@@ -20,7 +20,7 @@ const PremiumPage = ({ onClose }) => {
       const clientSecret = response.data.clientSecret;
 
       // Redirect to Stripe Checkout
-      const stripe = window.Stripe("your_stripe_public_key"); // Replace with your Stripe public key
+      const stripe = window.Stripe("your_stripe_public_key"); // Use your Stripe public key here
       const { error } = await stripe.redirectToCheckout({
         sessionId: clientSecret,
       });
