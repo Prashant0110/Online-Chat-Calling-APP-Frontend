@@ -47,11 +47,11 @@ const GroupList = ({ onChatSelect }) => {
 
       const endpoint =
         action === "join"
-          ? `http://localhost:3000/api/groups/join/${groupId}`
+          ? `http://localhost:3000/api/groups//join/${groupId}` // Adjust endpoint format
           : `http://localhost:3000/api/groups/leave/${groupId}`;
 
       // Send Auth token in the header to perform action on the group
-      await axios.post(
+      const response = await axios.post(
         endpoint,
         {},
         {
@@ -61,9 +61,12 @@ const GroupList = ({ onChatSelect }) => {
         }
       );
 
-      updateGroupMembership(groupId, action === "join");
-      alert(`You have ${action === "join" ? "joined" : "left"} the group`);
+      if (response.status === 200) {
+        updateGroupMembership(groupId, action === "join");
+        alert(`You have ${action === "join" ? "joined" : "left"} the group`);
+      }
     } catch (err) {
+      console.error(err); // Log the actual error for debugging
       alert(err.response?.data?.message || `Failed to ${action} the group`);
     } finally {
       setProcessingGroupId(null);
