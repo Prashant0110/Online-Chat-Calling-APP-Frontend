@@ -15,7 +15,9 @@ const ChatBox = ({ groupId }) => {
   const [call, setCall] = useState(null); // Current call instance
   const [localStream, setLocalStream] = useState(null); // Local media stream
 
-  const ringTone = new Audio("path/to/ringtone.mp3"); // Path to your ringtone file
+  const ringTone = new Audio(
+    "/mp3/arash-broken-angel-ringtone-sad-ringtone-720p-00-61932-63588.mp3"
+  ); // Path to your ringtone file
 
   console.log("ChatBox rendered"); // Log when the component renders
   console.log("Fetching messages for groupId:", groupId); // Debugging log
@@ -70,8 +72,20 @@ const ChatBox = ({ groupId }) => {
     });
 
     // Listen for callUser events
-    socket.on("callUser", () => {
+    socket.on("callUser", ({ peerId }) => {
       ringTone.play(); // Play ringtone when a call is received
+      const acceptCall = window.confirm(
+        "Incoming call! Do you want to accept?"
+      );
+      if (acceptCall) {
+        // Answer the call with the local stream
+        const incomingCall = peer.call(peerId, localStream);
+        incomingCall.on("stream", (remoteStream) => {
+          const videoElement = document.getElementById("remoteVideo");
+          videoElement.srcObject = remoteStream; // Display remote stream
+          videoElement.classList.remove("hidden"); // Make sure the video is visible
+        });
+      }
     });
 
     // Clean up socket listeners
@@ -88,6 +102,10 @@ const ChatBox = ({ groupId }) => {
     const peerInstance = new Peer(); // Create a new Peer instance
     setPeer(peerInstance);
 
+    peerInstance.on("open", (id) => {
+      console.log("Peer ID:", id); // Log the peer ID for debugging
+    });
+
     peerInstance.on("call", (incomingCall) => {
       const acceptCall = window.confirm(
         "Incoming call! Do you want to accept?"
@@ -97,6 +115,7 @@ const ChatBox = ({ groupId }) => {
         incomingCall.on("stream", (remoteStream) => {
           const videoElement = document.getElementById("remoteVideo");
           videoElement.srcObject = remoteStream; // Display remote stream
+          videoElement.classList.remove("hidden"); // Make sure the video is visible
         });
       } else {
         incomingCall.close(); // Close the call if declined
@@ -148,18 +167,24 @@ const ChatBox = ({ groupId }) => {
   };
 
   const handleStartCall = async () => {
-    console.log("Call button clicked"); // Debugging log
+    console.log("Video Call button clicked"); // Debugging log
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: true,
+        audio: true, // Ensure audio is requested
       });
       setLocalStream(stream); // Store the local stream
+
+      // Display local stream in a video element
+      const localVideoElement = document.getElementById("localVideo");
+      localVideoElement.srcObject = stream; // Set the local stream to the video element
+      localVideoElement.classList.remove("hidden"); // Make sure the video is visible
 
       // Notify other members about the call
       socket.emit("callUser", {
         groupId,
         userId: localStorage.getItem("userId"),
+        peerId: peer.id, // Include the caller's peer ID
       });
 
       // Create a call
@@ -167,6 +192,7 @@ const ChatBox = ({ groupId }) => {
       call.on("stream", (remoteStream) => {
         const videoElement = document.getElementById("remoteVideo");
         videoElement.srcObject = remoteStream; // Display remote stream
+        videoElement.classList.remove("hidden"); // Make sure the video is visible
       });
       setCall(call); // Store the call instance
     } catch (error) {
@@ -181,6 +207,7 @@ const ChatBox = ({ groupId }) => {
       setCall(null); // Clear the call instance
       const videoElement = document.getElementById("remoteVideo");
       videoElement.srcObject = null; // Clear the remote video stream
+      videoElement.classList.add("hidden"); // Hide the video element
       if (localStream) {
         localStream.getTracks().forEach((track) => track.stop()); // Stop local stream tracks
         setLocalStream(null); // Clear the local stream
@@ -188,91 +215,124 @@ const ChatBox = ({ groupId }) => {
     }
   };
 
+  const handleStartAudioCall = async () => {
+    console.log("Audio Call button clicked"); // Debugging log
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true, // Only request audio
+        video: false, // Do not request video
+      });
+      setLocalStream(stream); // Store the local stream
+
+      // Notify other members about the audio call
+      socket.emit("callUser", {
+        groupId,
+        userId: localStorage.getItem("userId"),
+        peerId: peer.id, // Include the caller's peer ID
+      });
+
+      // Create a call
+      const call = peer.call("other-peer-id", stream); // Replace "other-peer-id" with the actual peer ID
+      call.on("stream", (remoteStream) => {
+        // Handle remote audio stream
+      });
+      setCall(call); // Store the call instance
+    } catch (error) {
+      console.error("Error starting audio call:", error); // Debugging log
+      alert("Failed to start the audio call.");
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-white p-4 rounded-lg shadow-lg">
-      {/* Messages List */}
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message._id}
-            className={`flex ${
-              message.sender._id === localStorage.getItem("userId")
-                ? "justify-end"
-                : "justify-start"
-            }`}
-          >
-            {!(message.sender._id === localStorage.getItem("userId")) && (
-              <span className="text-sm text-gray-600 font-semibold mr-2">
-                {message.sender.username}
-              </span>
-            )}
+    <>
+      <div className="flex flex-col h-full bg-white p-4 rounded-lg shadow-lg">
+        {/* Messages List */}
+        <div className="flex-1 overflow-y-auto space-y-4">
+          {messages.map((message) => (
             <div
-              className={`max-w-xs p-3 rounded-lg shadow ${
+              key={message._id}
+              className={`flex ${
                 message.sender._id === localStorage.getItem("userId")
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 text-gray-800"
+                  ? "justify-end"
+                  : "justify-start"
               }`}
             >
-              {message.content}
+              {!(message.sender._id === localStorage.getItem("userId")) && (
+                <span className="text-sm text-gray-600 font-semibold mr-2">
+                  {message.sender.username}
+                </span>
+              )}
+              <div
+                className={`max-w-xs p-3 rounded-lg shadow ${
+                  message.sender._id === localStorage.getItem("userId")
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+              >
+                {message.content}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {/* Typing Indicator */}
-        {isTyping && (
-          <p className="text-sm italic text-gray-500">
-            {typingUser || "Someone"} is typing...
-          </p>
-        )}
-      </div>
+          {/* Typing Indicator */}
+          {isTyping && (
+            <p className="text-sm italic text-gray-500">
+              {typingUser || "Someone"} is typing...
+            </p>
+          )}
+        </div>
 
-      {/* Message Input */}
-      <form onSubmit={handleSendMessage} className="mt-4 flex items-center">
-        <input
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleTyping}
-          placeholder="Type a message..."
-          className="flex-grow p-3 border rounded focus:outline-none focus:ring focus:ring-blue-300"
-        />
+        {/* Message Input */}
+        <form onSubmit={handleSendMessage} className="mt-4 flex items-center">
+          <input
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={handleTyping}
+            placeholder="Type a message..."
+            className="flex-grow p-3 border rounded focus:outline-none focus:ring focus:ring-blue-300"
+          />
 
-        <button
-          type="submit"
-          className="ml-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Send
-        </button>
-      </form>
-
-      {/* Call Buttons */}
-      <div className="flex space-x-4 mt-4">
-        {call ? (
           <button
-            onClick={handleEndCall}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            type="submit"
+            className="ml-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-            End Call
+            Send
           </button>
-        ) : (
-          <button
-            onClick={handleStartCall}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-          >
-            <FontAwesomeIcon icon={faPhone} /> Call
-          </button>
-        )}
-        <button
-          onClick={handleStartCall}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          <FontAwesomeIcon icon={faVideo} /> Video Call
-        </button>
-      </div>
+        </form>
 
-      {/* Video Element for Remote Stream */}
-      <video id="remoteVideo" autoPlay playsInline className="hidden" />
-    </div>
+        {/* Call Buttons */}
+        <div className="flex space-x-4 mt-4">
+          {call ? (
+            <button
+              onClick={handleEndCall}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
+              End Call
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleStartCall}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              >
+                <FontAwesomeIcon icon={faVideo} /> Video Call
+              </button>
+              <button
+                onClick={handleStartAudioCall}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                <FontAwesomeIcon icon={faPhone} /> Audio Call
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Video Elements for Local and Remote Streams */}
+        <video id="localVideo" autoPlay playsInline className="hidden" />
+        <video id="remoteVideo" autoPlay playsInline className="hidden" />
+      </div>
+    </>
   );
 };
 
