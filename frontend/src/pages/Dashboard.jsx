@@ -52,14 +52,9 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenChat = (groupId) => {
-    const group = groups.find((g) => g._id === groupId);
-    setSelectedGroup(group);
-    console.log("Opened Chat for Group:", group); // Debugging log
-  };
-
-  const handleStartCall = () => {
-    setShowPremiumPage(true);
+  const handleChatSelect = (groupId) => {
+    console.log("Selected Group ID:", groupId); // Debugging log
+    setSelectedGroup(groupId); // Ensure this is the correct ID
   };
 
   return (
@@ -70,7 +65,7 @@ const Dashboard = () => {
           Your Groups
         </h2>
         <GroupList
-          onChatSelect={handleOpenChat}
+          onChatSelect={handleChatSelect}
           groups={groups}
           handleJoinGroup={handleJoinGroup}
           userId={userId}
@@ -80,7 +75,7 @@ const Dashboard = () => {
       {/* Chat Section */}
       <div className="flex-1 flex flex-col">
         {selectedGroup ? (
-          <ChatBox groupId={selectedGroup._id} onStartCall={handleStartCall} />
+          <ChatBox groupId={selectedGroup} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Select a group to start chatting</p>

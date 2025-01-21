@@ -74,6 +74,11 @@ const GroupList = ({ onChatSelect }) => {
     }
   };
 
+  const handleGroupSelect = (groupId) => {
+    console.log("Group selected:", groupId); // Debugging log
+    onChatSelect(groupId); // Call the function passed from Dashboard
+  };
+
   if (loading) return <p>Loading groups...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -92,7 +97,7 @@ const GroupList = ({ onChatSelect }) => {
             {group.isJoined ? (
               <>
                 <button
-                  onClick={() => onChatSelect(group._id)}
+                  onClick={() => handleGroupSelect(group._id)}
                   className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                 >
                   Chat

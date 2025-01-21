@@ -4,19 +4,34 @@ import axios from "axios";
 import useSocket from "../services/useSocket"; // Import the custom hook
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faVideo, faPhone } from "@fortawesome/free-solid-svg-icons";
+import Peer from "peerjs"; // Import Peer.js
 
 const ChatBox = ({ groupId }) => {
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
+  const [peer, setPeer] = useState(null); // Peer instance
+  const [call, setCall] = useState(null); // Current call instance
+  const [localStream, setLocalStream] = useState(null); // Local media stream
 
+  const ringTone = new Audio("path/to/ringtone.mp3"); // Path to your ringtone file
+
+  console.log("ChatBox rendered"); // Log when the component renders
+  console.log("Fetching messages for groupId:", groupId); // Debugging log
+
+  // Initialize socket
   const socket = useSocket(groupId); // Use the custom hook
 
+  // Fetch messages when the component mounts or groupId changes
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem("token");
+        console.log("Fetching messages for groupId:", groupId); // Debugging log
+        if (!groupId || groupId.length !== 24) {
+          throw new Error("Invalid group ID");
+        }
         const response = await axios.get(
           `http://localhost:3000/api/chats/getchat/${groupId}`,
           {
@@ -26,7 +41,10 @@ const ChatBox = ({ groupId }) => {
         );
         setMessages(response.data);
       } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error(
+          "Error fetching messages:",
+          error.response?.data || error.message
+        );
       }
     };
 
@@ -51,34 +69,69 @@ const ChatBox = ({ groupId }) => {
       setTypingUser("");
     });
 
+    // Listen for callUser events
+    socket.on("callUser", () => {
+      ringTone.play(); // Play ringtone when a call is received
+    });
+
+    // Clean up socket listeners
     return () => {
       socket.off("message");
       socket.off("typing");
       socket.off("stop-typing");
+      socket.off("callUser");
     };
-  }, [groupId, socket]);
+  }, [groupId, socket]); // Only re-run when groupId changes
+
+  // Initialize Peer.js
+  useEffect(() => {
+    const peerInstance = new Peer(); // Create a new Peer instance
+    setPeer(peerInstance);
+
+    peerInstance.on("call", (incomingCall) => {
+      const acceptCall = window.confirm(
+        "Incoming call! Do you want to accept?"
+      );
+      if (acceptCall) {
+        incomingCall.answer(localStream); // Answer the call with the local stream
+        incomingCall.on("stream", (remoteStream) => {
+          const videoElement = document.getElementById("remoteVideo");
+          videoElement.srcObject = remoteStream; // Display remote stream
+        });
+      } else {
+        incomingCall.close(); // Close the call if declined
+      }
+    });
+
+    return () => {
+      peerInstance.destroy(); // Clean up the peer instance on unmount
+    };
+  }, [localStream]); // Run only once when the component mounts
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
-
-    if (!content.trim()) return;
+    e.preventDefault(); // Prevent the default form submission
+    if (!content || !groupId) {
+      console.error("Content and groupId are required."); // Debugging log
+      return; // Exit if content or groupId is missing
+    }
 
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        "http://localhost:3000/api/chats/sendchat",
-        { content, groupId },
-        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+        "http://localhost:3000/api/chats/sendchat", // Correct endpoint for sending messages
+        { content, groupId }, // Ensure both content and groupId are sent
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
-      setMessages((prevMessages) => [...prevMessages, response.data]);
-      socket.emit("sendMessage", response.data);
-      setContent("");
-      setIsTyping(false);
-      socket.emit("stop-typing", groupId);
+      setMessages((prevMessages) => [...prevMessages, response.data]); // Update messages state
+      setContent(""); // Clear the input field
     } catch (error) {
-      console.error("Error sending message:", error);
-      alert(error.response?.data?.message || "Failed to send message");
+      console.error(
+        "Error sending message:",
+        error.response?.data || error.message
+      );
     }
   };
 
@@ -95,32 +148,43 @@ const ChatBox = ({ groupId }) => {
   };
 
   const handleStartCall = async () => {
+    console.log("Call button clicked"); // Debugging log
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        "http://localhost:3000/api/chats/call",
-        { groupId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream); // Store the local stream
 
-      console.log("Response from call endpoint:", response); // Log the response
+      // Notify other members about the call
+      socket.emit("callUser", {
+        groupId,
+        userId: localStorage.getItem("userId"),
+      });
 
-      if (response.status === 200) {
-        // Redirect to Stripe Checkout
-        const stripe = window.Stripe("your_stripe_public_key"); // Replace with your Stripe public key
-        const { error } = await stripe.redirectToCheckout({
-          sessionId: response.data.sessionId, // Assuming you return a sessionId from your backend
-        });
-
-        if (error) {
-          alert(error.message);
-        }
-      }
+      // Create a call
+      const call = peer.call("other-peer-id", stream); // Replace "other-peer-id" with the actual peer ID
+      call.on("stream", (remoteStream) => {
+        const videoElement = document.getElementById("remoteVideo");
+        videoElement.srcObject = remoteStream; // Display remote stream
+      });
+      setCall(call); // Store the call instance
     } catch (error) {
-      alert(
-        error.response?.data?.message ||
-          "You need a premium account to make calls."
-      );
+      console.error("Error starting call:", error); // Debugging log
+      alert("Failed to start the call.");
+    }
+  };
+
+  const handleEndCall = () => {
+    if (call) {
+      call.close(); // Close the call
+      setCall(null); // Clear the call instance
+      const videoElement = document.getElementById("remoteVideo");
+      videoElement.srcObject = null; // Clear the remote video stream
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop()); // Stop local stream tracks
+        setLocalStream(null); // Clear the local stream
+      }
     }
   };
 
@@ -168,7 +232,7 @@ const ChatBox = ({ groupId }) => {
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyPress={handleTyping}
+          onKeyDown={handleTyping}
           placeholder="Type a message..."
           className="flex-grow p-3 border rounded focus:outline-none focus:ring focus:ring-blue-300"
         />
@@ -183,12 +247,21 @@ const ChatBox = ({ groupId }) => {
 
       {/* Call Buttons */}
       <div className="flex space-x-4 mt-4">
-        <button
-          onClick={handleStartCall}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          <FontAwesomeIcon icon={faPhone} /> Call
-        </button>
+        {call ? (
+          <button
+            onClick={handleEndCall}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            End Call
+          </button>
+        ) : (
+          <button
+            onClick={handleStartCall}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            <FontAwesomeIcon icon={faPhone} /> Call
+          </button>
+        )}
         <button
           onClick={handleStartCall}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -196,6 +269,9 @@ const ChatBox = ({ groupId }) => {
           <FontAwesomeIcon icon={faVideo} /> Video Call
         </button>
       </div>
+
+      {/* Video Element for Remote Stream */}
+      <video id="remoteVideo" autoPlay playsInline className="hidden" />
     </div>
   );
 };
