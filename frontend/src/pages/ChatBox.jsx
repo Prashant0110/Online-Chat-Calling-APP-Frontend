@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import useSocket from "../services/useSocket"; // Import the custom hook
+import useSocket from "../services/useSocket";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faVideo, faPhone } from "@fortawesome/free-solid-svg-icons";
-import Peer from "peerjs"; // Import Peer.js
+import Peer from "peerjs";
+import { loadStripe } from "@stripe/stripe-js";
+
+// Initialize Stripe
+const stripePromise = loadStripe("pk_test_YOUR_STRIPE_PUBLISHABLE_KEY"); // Replace with your Stripe publishable key
 
 const ChatBox = ({ groupId }) => {
   const [messages, setMessages] = useState([]);
@@ -14,26 +18,19 @@ const ChatBox = ({ groupId }) => {
   const [peer, setPeer] = useState(null); // Peer instance
   const [call, setCall] = useState(null); // Current call instance
   const [localStream, setLocalStream] = useState(null); // Local media stream
+  const [isPremiumUser, setIsPremiumUser] = useState(false); // Track premium status
 
   const ringTone = new Audio(
     "/mp3/arash-broken-angel-ringtone-sad-ringtone-720p-00-61932-63588.mp3"
-  ); // Path to your ringtone file
+  );
 
-  console.log("ChatBox rendered"); // Log when the component renders
-  console.log("Fetching messages for groupId:", groupId); // Debugging log
-
-  // Initialize socket
-  const socket = useSocket(groupId); // Use the custom hook
+  const socket = useSocket(groupId);
 
   // Fetch messages when the component mounts or groupId changes
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log("Fetching messages for groupId:", groupId); // Debugging log
-        if (!groupId || groupId.length !== 24) {
-          throw new Error("Invalid group ID");
-        }
         const response = await axios.get(
           `http://localhost:3000/api/chats/getchat/${groupId}`,
           {
@@ -95,7 +92,7 @@ const ChatBox = ({ groupId }) => {
       socket.off("stop-typing");
       socket.off("callUser");
     };
-  }, [groupId, socket]); // Only re-run when groupId changes
+  }, [groupId, socket]);
 
   // Initialize Peer.js
   useEffect(() => {
@@ -111,124 +108,135 @@ const ChatBox = ({ groupId }) => {
         "Incoming call! Do you want to accept?"
       );
       if (acceptCall) {
-        incomingCall.answer(localStream); // Answer the call with the local stream
+        incomingCall.answer(localStream);
         incomingCall.on("stream", (remoteStream) => {
           const videoElement = document.getElementById("remoteVideo");
-          videoElement.srcObject = remoteStream; // Display remote stream
-          videoElement.classList.remove("hidden"); // Make sure the video is visible
+          videoElement.srcObject = remoteStream;
+          videoElement.classList.remove("hidden");
         });
       } else {
-        incomingCall.close(); // Close the call if declined
+        incomingCall.close();
       }
     });
 
     return () => {
       peerInstance.destroy(); // Clean up the peer instance on unmount
     };
-  }, [localStream]); // Run only once when the component mounts
+  }, [localStream]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault(); // Prevent the default form submission
-    if (!content || !groupId) {
-      console.error("Content and groupId are required."); // Debugging log
-      return; // Exit if content or groupId is missing
-    }
+  // Check if the user is a premium user
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          "http://localhost:3000/api/user/is-premium",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setIsPremiumUser(response.data.isPremium);
+      } catch (error) {
+        console.error(
+          "Error checking premium status:",
+          error.response?.data || error.message
+        );
+      }
+    };
 
+    checkPremiumStatus();
+  }, []);
+
+  // Handle Stripe payment
+  const handlePayment = async () => {
     try {
+      const stripe = await stripePromise;
       const token = localStorage.getItem("token");
+
+      // Create a Stripe Checkout session
       const response = await axios.post(
-        "http://localhost:3000/api/chats/sendchat", // Correct endpoint for sending messages
-        { content, groupId }, // Ensure both content and groupId are sent
+        "http://localhost:3000/api/stripe/create-checkout-session",
+        {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      setMessages((prevMessages) => [...prevMessages, response.data]); // Update messages state
-      setContent(""); // Clear the input field
+      const sessionId = response.data.sessionId;
+
+      // Redirect to Stripe Checkout
+      const result = await stripe.redirectToCheckout({ sessionId });
+      if (result.error) {
+        alert(result.error.message);
+      }
     } catch (error) {
       console.error(
-        "Error sending message:",
+        "Error processing payment:",
         error.response?.data || error.message
       );
+      alert("Failed to process payment.");
     }
   };
 
-  const handleTyping = () => {
-    if (!isTyping) {
-      socket.emit("typing", {
-        groupId,
-        username: localStorage.getItem("username"),
-      });
-
-      setTimeout(() => socket.emit("stop-typing", groupId), 3000);
-      setIsTyping(true);
-    }
-  };
-
+  // Start a video call
   const handleStartCall = async () => {
-    console.log("Video Call button clicked"); // Debugging log
+    if (!isPremiumUser) {
+      handlePayment(); // Redirect to Stripe payment if not a premium user
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: true, // Ensure audio is requested
+        audio: true,
       });
-      setLocalStream(stream); // Store the local stream
+      setLocalStream(stream);
 
-      // Display local stream in a video element
+      // Display local stream
       const localVideoElement = document.getElementById("localVideo");
-      localVideoElement.srcObject = stream; // Set the local stream to the video element
-      localVideoElement.classList.remove("hidden"); // Make sure the video is visible
+      localVideoElement.srcObject = stream;
+      localVideoElement.classList.remove("hidden");
 
-      // Notify other members about the call
+      // Notify other group members about the call
       socket.emit("callUser", {
         groupId,
         userId: localStorage.getItem("userId"),
-        peerId: peer.id, // Include the caller's peer ID
+        peerId: peer.id,
       });
 
       // Create a call
       const call = peer.call("other-peer-id", stream); // Replace "other-peer-id" with the actual peer ID
       call.on("stream", (remoteStream) => {
         const videoElement = document.getElementById("remoteVideo");
-        videoElement.srcObject = remoteStream; // Display remote stream
-        videoElement.classList.remove("hidden"); // Make sure the video is visible
+        videoElement.srcObject = remoteStream;
+        videoElement.classList.remove("hidden");
       });
-      setCall(call); // Store the call instance
+      setCall(call);
     } catch (error) {
-      console.error("Error starting call:", error); // Debugging log
+      console.error("Error starting call:", error);
       alert("Failed to start the call.");
     }
   };
 
-  const handleEndCall = () => {
-    if (call) {
-      call.close(); // Close the call
-      setCall(null); // Clear the call instance
-      const videoElement = document.getElementById("remoteVideo");
-      videoElement.srcObject = null; // Clear the remote video stream
-      videoElement.classList.add("hidden"); // Hide the video element
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop()); // Stop local stream tracks
-        setLocalStream(null); // Clear the local stream
-      }
-    }
-  };
-
+  // Start an audio call
   const handleStartAudioCall = async () => {
-    console.log("Audio Call button clicked"); // Debugging log
+    if (!isPremiumUser) {
+      handlePayment(); // Redirect to Stripe payment if not a premium user
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true, // Only request audio
-        video: false, // Do not request video
+        audio: true,
+        video: false,
       });
-      setLocalStream(stream); // Store the local stream
+      setLocalStream(stream);
 
-      // Notify other members about the audio call
+      // Notify other group members about the call
       socket.emit("callUser", {
         groupId,
         userId: localStorage.getItem("userId"),
-        peerId: peer.id, // Include the caller's peer ID
+        peerId: peer.id,
       });
 
       // Create a call
@@ -236,10 +244,25 @@ const ChatBox = ({ groupId }) => {
       call.on("stream", (remoteStream) => {
         // Handle remote audio stream
       });
-      setCall(call); // Store the call instance
+      setCall(call);
     } catch (error) {
-      console.error("Error starting audio call:", error); // Debugging log
+      console.error("Error starting audio call:", error);
       alert("Failed to start the audio call.");
+    }
+  };
+
+  // End the current call
+  const handleEndCall = () => {
+    if (call) {
+      call.close();
+      setCall(null);
+      const videoElement = document.getElementById("remoteVideo");
+      videoElement.srcObject = null;
+      videoElement.classList.add("hidden");
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
     }
   };
 
@@ -292,7 +315,6 @@ const ChatBox = ({ groupId }) => {
             placeholder="Type a message..."
             className="flex-grow p-3 border rounded focus:outline-none focus:ring focus:ring-blue-300"
           />
-
           <button
             type="submit"
             className="ml-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"

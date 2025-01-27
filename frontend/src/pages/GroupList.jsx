@@ -1,55 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const GroupList = ({ onChatSelect }) => {
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
+const GroupList = ({ onChatSelect, groups, handleJoinGroup, userId }) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [processingGroupId, setProcessingGroupId] = useState(null);
-
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const { data } = await axios.get(
-          "http://localhost:3000/api/groups/getgroup",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setGroups(data);
-        setLoading(false);
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to load groups");
-        setLoading(false);
-      }
-    };
-
-    fetchGroups();
-  }, []);
-
-  const handleJoinGroup = async (groupId) => {
-    setProcessingGroupId(groupId);
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `http://localhost:3000/api/groups/join/${groupId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setGroups((prevGroups) =>
-        prevGroups.map((group) =>
-          group._id === groupId ? { ...group, isJoined: true } : group
-        )
-      );
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Failed to join the group");
-    } finally {
-      setProcessingGroupId(null);
-    }
-  };
 
   const handleLeaveGroup = async (groupId) => {
     setProcessingGroupId(groupId);
@@ -61,11 +16,11 @@ const GroupList = ({ onChatSelect }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setGroups((prevGroups) =>
-        prevGroups.map((group) =>
-          group._id === groupId ? { ...group, isJoined: false } : group
-        )
+      // Update the group's joined status locally
+      const updatedGroups = groups.map((group) =>
+        group._id === groupId ? { ...group, isJoined: false } : group
       );
+      onChatSelect(null); // Deselect the group if the user leaves it
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Failed to leave the group");

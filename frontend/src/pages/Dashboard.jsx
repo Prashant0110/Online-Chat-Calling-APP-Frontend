@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showPremiumPage, setShowPremiumPage] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(false); // Track premium status
   const token = localStorage.getItem("token");
   let userId = null;
 
@@ -17,6 +18,7 @@ const Dashboard = () => {
     userId = payload.id; // Assuming user ID is stored under 'id'
   }
 
+  // Fetch groups and premium status
   useEffect(() => {
     const fetchGroups = async () => {
       try {
@@ -33,7 +35,22 @@ const Dashboard = () => {
       }
     };
 
+    const checkPremiumStatus = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:3000/api/user/is-premium",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setIsPremiumUser(response.data.isPremium);
+      } catch (error) {
+        console.error("Error checking premium status:", error.message);
+      }
+    };
+
     fetchGroups();
+    checkPremiumStatus();
   }, [token]);
 
   const handleJoinGroup = async (groupId) => {
@@ -75,7 +92,7 @@ const Dashboard = () => {
       {/* Chat Section */}
       <div className="flex-1 flex flex-col">
         {selectedGroup ? (
-          <ChatBox groupId={selectedGroup} />
+          <ChatBox groupId={selectedGroup} isPremiumUser={isPremiumUser} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Select a group to start chatting</p>
